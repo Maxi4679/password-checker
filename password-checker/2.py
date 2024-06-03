@@ -1,4 +1,3 @@
-import base64
 import requests
 import pyautogui
 import pygetwindow as gw
@@ -14,17 +13,34 @@ import tkinter as tk
 from tkinter import simpledialog, messagebox
 import psutil
 import os
+import shutil
+import base64
 
-PASSWORDS_API_URL = base64.b64decode("aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL01heGk0Njc5L3Bhc3N3b3JkLWNoZWNrZXIvbWFzdGVyL3Bhc3N3b3JkLWNoZWNrZXIvcGFzc3dvcmRzLnR4dA==").decode('utf-8')
-GITHUB_REPO_URL = base64.b64decode("aHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS9yZXBvcy9NYXhpNDY3OS9wYXNzd29yZC1jaGVja2VyL2NvbnRlbnRzL3Bhc3N3b3JkLWNoZWNrZXIvcGFzc3dvcmRzLnR4dA==").decode('utf-8')
-GITHUB_TOKEN = base64.b64decode("Z2hwX0VOdzJmVjR5ZEFXTzdTY0xQZWFtcWlGdW5EOG8waTJoUm53QQ==").decode('utf-8')
+PASSWORDS_API_URL = "https://raw.githubusercontent.com/Maxi4679/password-checker/master/password-checker/passwords.txt"
+GITHUB_REPO_URL = "https://api.github.com/repos/Maxi4679/password-checker/contents/password-checker/passwords.txt"
+GITHUB_TOKEN = "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"
+UPDATE_URL = "https://raw.githubusercontent.com/Maxi4679/password-checker/master/password-checker/2.py"
+
+logging.basicConfig(filename='app.log', filemode='w', format='%(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
 
 def get_passwords_from_api():
-    response = requests.get(PASSWORDS_API_URL)
-    if response.status_code == 200:
+    headers = {
+        "Authorization": f"token {GITHUB_TOKEN}"
+    }
+    try:
+        logging.debug(f"Requesting passwords from URL: {PASSWORDS_API_URL} with headers: {headers}")
+        response = requests.get(PASSWORDS_API_URL, headers=headers)
+        response.raise_for_status()  # Raises HTTPError for bad responses
+        logging.debug(f"Response status code: {response.status_code}")
         return response.text.splitlines()
-    else:
-        raise Exception("Failed to fetch passwords from the API")
+    except requests.exceptions.HTTPError as http_err:
+        logging.error(f"HTTP error occurred: {http_err}")  # HTTP error
+        logging.debug(f"Response content: {response.content if response else 'No response content'}")
+        raise Exception("Failed to fetch passwords from the API") from http_err
+    except requests.exceptions.RequestException as req_err:
+        logging.error(f"RequestException: {req_err}")  # Other request errors
+        logging.debug(f"Response content: {response.content if response else 'No response content'}")
+        raise Exception("Failed to fetch passwords from the API") from req_err
 
 def check_password(password, passwords):
     return password in passwords
@@ -39,11 +55,11 @@ def get_mac_address():
 def get_public_ip():
     try:
         response = requests.get("https://api.ipify.org?format=json")
-        if response.status_code == 200:
-            return response.json()['ip']
-    except Exception as e:
+        response.raise_for_status()
+        return response.json()['ip']
+    except requests.exceptions.RequestException as e:
         logging.error(f"Error fetching public IP address: {e}")
-    return None
+        return None
 
 def get_computer_info():
     mac_address = get_mac_address()
@@ -104,8 +120,6 @@ settings = {
 }
 
 settings_file_path = Path("settings.json")
-
-logging.basicConfig(filename='app.log', filemode='w', format='%(name)s - %(levelname)s - %(message)s')
 
 def save_settings():
     try:
@@ -218,6 +232,22 @@ def prompt_password(passwords):
         sys.exit()
     root.destroy()
 
+def update_script():
+    headers = {
+        "Authorization": f"token {GITHUB_TOKEN}"
+    }
+    try:
+        response = requests.get(UPDATE_URL, headers=headers)
+        response.raise_for_status()
+        new_code = response.text
+        with open(sys.argv[0], 'w', encoding='utf-8') as f:
+            f.write(new_code)
+        messagebox.showinfo("Update", "Script has been updated. Please restart the application.")
+        sys.exit()
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error updating the script: {e}")
+        messagebox.showerror("Update Error", f"Failed to update the script: {e}")
+
 def main_app():
     try:
         passwords = get_passwords_from_api()
@@ -227,6 +257,7 @@ def main_app():
 
     prompt_password(passwords)
     load_settings()
+    update_script()
     toggle_pixel_finding()
 
 if __name__ == "__main__":
