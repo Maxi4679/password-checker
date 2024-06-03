@@ -12,8 +12,6 @@ import sys
 import tkinter as tk
 from tkinter import simpledialog, messagebox
 import psutil
-import os
-import shutil
 import base64
 
 PASSWORDS_API_URL = "https://raw.githubusercontent.com/Maxi4679/password-checker/master/password-checker/passwords.txt"
@@ -24,12 +22,9 @@ UPDATE_URL = "https://raw.githubusercontent.com/Maxi4679/password-checker/master
 logging.basicConfig(filename='app.log', filemode='w', format='%(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
 
 def get_passwords_from_api():
-    headers = {
-        "Authorization": f"token {GITHUB_TOKEN}"
-    }
     try:
-        logging.debug(f"Requesting passwords from URL: {PASSWORDS_API_URL} with headers: {headers}")
-        response = requests.get(PASSWORDS_API_URL, headers=headers)
+        logging.debug(f"Requesting passwords from URL: {PASSWORDS_API_URL}")
+        response = requests.get(PASSWORDS_API_URL)
         response.raise_for_status()  # Raises HTTPError for bad responses
         logging.debug(f"Response status code: {response.status_code}")
         return response.text.splitlines()
